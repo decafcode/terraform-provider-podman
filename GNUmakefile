@@ -7,10 +7,10 @@ install: build
 	go install -v ./...
 
 lint:
-	golangci-lint run
+	go tool golangci-lint run
 
 generate:
-	cd tools; go generate ./...
+	go generate
 
 fmt:
 	gofmt -s -w -e .
