@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"golang.org/x/crypto/ssh"
 )
 
 type Client struct {
@@ -16,6 +18,7 @@ type Client struct {
 }
 
 type Config struct {
+	Ssh ssh.ClientConfig
 }
 
 func Connect(ctx context.Context, url *url.URL, config *Config) (*Client, error) {
@@ -27,6 +30,25 @@ func Connect(ctx context.Context, url *url.URL, config *Config) (*Client, error)
 		return &Client{
 			http:    &http.Client{},
 			urlBase: &urlCopy,
+		}, nil
+
+	case "ssh":
+		transport, http, err := dialSshTransport(ctx, url, &config.Ssh)
+
+		if err != nil {
+			return nil, err
+		}
+
+		dummyBase, err := url.Parse("http://UNIX-OVER-SSH/")
+
+		if err != nil {
+			panic(err)
+		}
+
+		return &Client{
+			transport: transport,
+			http:      http,
+			urlBase:   dummyBase,
 		}, nil
 
 	case "unix":
