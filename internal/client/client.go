@@ -29,6 +29,19 @@ func Connect(ctx context.Context, url *url.URL, config *Config) (*Client, error)
 			urlBase: &urlCopy,
 		}, nil
 
+	case "unix":
+		http := createUnixTransport(url.Path)
+		dummyBase, err := url.Parse("http://LOCAL-UNIX-SOCKET/")
+
+		if err != nil {
+			panic(err)
+		}
+
+		return &Client{
+			http:    http,
+			urlBase: dummyBase,
+		}, nil
+
 	default:
 		return nil, fmt.Errorf("unsupported URL scheme: %s", url.Scheme)
 	}
