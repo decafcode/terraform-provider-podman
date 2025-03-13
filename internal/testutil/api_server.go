@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+
+	"github.com/decafcode/terraform-provider-podman/internal/api"
 )
 
 type ApiServer struct {
-	Mutex sync.Mutex
+	Networks map[string]*api.NetworkJson
+	Mutex    sync.Mutex
 
 	nextId int
 }
