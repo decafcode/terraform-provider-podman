@@ -1,4 +1,5 @@
 // Copyright (c) HashiCorp, Inc.
+// Copyright (c) Decaf Code
 // SPDX-License-Identifier: MPL-2.0
 
 package main
@@ -7,6 +8,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"os"
 
 	"github.com/decafcode/terraform-provider-podman/internal/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
@@ -32,7 +34,12 @@ func main() {
 		Debug:   debug,
 	}
 
-	err := providerserver.Serve(context.Background(), provider.New(version), opts)
+	env := provider.PodmanProviderEnv{
+		ContainerHost: os.Getenv("CONTAINER_HOST"),
+		SshAuthSock:   os.Getenv("SSH_AUTH_SOCK"),
+	}
+
+	err := providerserver.Serve(context.Background(), provider.New(version, &env), opts)
 
 	if err != nil {
 		log.Fatal(err.Error())
