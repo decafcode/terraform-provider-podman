@@ -13,6 +13,9 @@ func (s *ApiServer) Expose(baseURL *url.URL, timeout time.Duration) http.Handler
 	mux.HandleFunc("POST", "v5.0.0/libpod/networks/create", s.handleNetworkCreate)
 	mux.HandleFunc("DELETE", "v5.0.0/libpod/networks/{nameOrId}", s.handleNetworkDelete)
 	mux.HandleFunc("GET", "v5.0.0/libpod/networks/{nameOrId}/json", s.handleNetworkGet)
+	mux.HandleFunc("POST", "v5.0.0/libpod/secrets/create", s.handleSecretCreate)
+	mux.HandleFunc("DELETE", "v5.0.0/libpod/secrets/{nameOrId}", s.handleSecretDelete)
+	mux.HandleFunc("GET", "v5.0.0/libpod/secrets/{nameOrId}/json", s.handleSecretGet)
 
 	return mux
 }
