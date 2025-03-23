@@ -11,6 +11,7 @@ import (
 
 type ApiServer struct {
 	Networks []*api.NetworkJson
+	Secrets  []*api.SecretInspectJson
 
 	mutex  sync.Mutex
 	nextId int
