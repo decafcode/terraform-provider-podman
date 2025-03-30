@@ -9,9 +9,18 @@ import (
 	"github.com/decafcode/terraform-provider-podman/internal/api"
 )
 
+type PullRequest struct {
+	Reference string
+	Policy    string
+}
+
 type ApiServer struct {
-	Networks []*api.NetworkJson
-	Secrets  []*api.SecretInspectJson
+	Auth            *api.RegistryAuth
+	Images          []*api.ImageJson
+	Networks        []*api.NetworkJson
+	PullRequests    []PullRequest
+	Secrets         []*api.SecretInspectJson
+	ValidReferences map[string]bool
 
 	mutex  sync.Mutex
 	nextId int
