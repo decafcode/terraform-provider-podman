@@ -14,8 +14,15 @@ type PullRequest struct {
 	Policy    string
 }
 
+type TestContainer struct {
+	Id      string
+	Json    api.ContainerCreateJson
+	Running bool
+}
+
 type ApiServer struct {
 	Auth            *api.RegistryAuth
+	Containers      []*TestContainer
 	Images          []*api.ImageJson
 	Networks        []*api.NetworkJson
 	PullRequests    []PullRequest
@@ -43,4 +50,23 @@ func readJson(req *http.Request, v any) error {
 	}
 
 	return json.NewDecoder(req.Body).Decode(v)
+}
+
+func (c *TestContainer) Clone() *TestContainer {
+	// Slow and hacky but this is a test fixture so we don't care
+
+	str, err := json.Marshal(c)
+
+	if err != nil {
+		panic(err)
+	}
+
+	clone := &TestContainer{}
+	err = json.Unmarshal(str, clone)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return clone
 }
