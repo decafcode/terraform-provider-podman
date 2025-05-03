@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"encoding/base64"
 	"fmt"
 	"testing"
 
@@ -181,6 +182,121 @@ func TestAccContainerResource(t *testing.T) {
 
 					if capture.Running {
 						return fmt.Errorf("container should not be running")
+					}
+
+					return nil
+				},
+			},
+			{
+				// Test create-and-upload, continued in the next step
+				Config: fmt.Sprintf(`
+					resource "podman_container" "updog" {
+						container_host = "%s"
+						image          = "example.com/library/test:v1.0.0"
+						name           = "updog"
+
+						uploads = [
+							{
+								content 	 = "Hello"
+								content_hash = "hash_of_hello"
+								path = "/tmp/file1"
+							},
+							{
+								content 	 = "World"
+								content_hash = "hash_of_world"
+								path = "/tmp/file2"
+							}
+						]
+					}
+				`, framework.Url()),
+				Check: func(_ *terraform.State) error {
+					capture, err := apiServer.CaptureContainer("updog")
+
+					if err != nil {
+						return err
+					}
+
+					result := cmp.DeepEqual(capture.UploadLog, []testutil.TestUpload{
+						{
+							Content: base64.StdEncoding.EncodeToString([]byte("Hello")),
+							Mode:    0644,
+							Path:    "/tmp/file1",
+						},
+						{
+							Content: base64.StdEncoding.EncodeToString([]byte("World")),
+							Mode:    0644,
+							Path:    "/tmp/file2",
+						},
+					})()
+
+					if !result.Success() {
+						t.Log(result)
+
+						return fmt.Errorf("upload log is incorrect (part 1)")
+					}
+
+					return nil
+				},
+			},
+			{
+				// Test in-place re-upload to an existing container.
+				//
+				// Note the change to the first but not the second entry
+				// in the uploads array. Only this changed file should get
+				// uploaded, and the container itself must be preserved
+				// between steps (this is indirectly tested by the presence of
+				// the old file contents in the upload log, which is not as
+				// rigorous as I'd like but oh well).
+				Config: fmt.Sprintf(`
+					resource "podman_container" "updog" {
+						container_host = "%s"
+						image          = "example.com/library/test:v1.0.0"
+						name           = "updog"
+
+						uploads = [
+							{
+								content 	 = "Howdy"
+								content_hash = "hash_of_howdy"
+								path = "/tmp/file1"
+							},
+							{
+								content 	 = "World"
+								content_hash = "hash_of_world"
+								path = "/tmp/file2"
+							}
+						]
+					}
+				`, framework.Url()),
+				Check: func(_ *terraform.State) error {
+					capture, err := apiServer.CaptureContainer("updog")
+
+					if err != nil {
+						return err
+					}
+
+					result := cmp.DeepEqual(capture.UploadLog, []testutil.TestUpload{
+						{
+							Content: base64.StdEncoding.EncodeToString([]byte("Hello")),
+							Mode:    0644,
+							Path:    "/tmp/file1",
+						},
+						{
+							Content: base64.StdEncoding.EncodeToString([]byte("World")),
+							Mode:    0644,
+							Path:    "/tmp/file2",
+						},
+						{
+							Content:    base64.StdEncoding.EncodeToString([]byte("Howdy")),
+							Mode:       0644,
+							Path:       "/tmp/file1",
+							WasRunning: true,
+						},
+					})()
+
+					if !result.Success() {
+						t.Log(result)
+
+						return fmt.Errorf("upload log is incorrect (part 2)")
 					}
 
 					return nil
