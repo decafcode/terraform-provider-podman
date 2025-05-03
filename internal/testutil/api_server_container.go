@@ -1,8 +1,11 @@
 package testutil
 
 import (
+	"archive/tar"
 	"context"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"net/http"
 	"slices"
 
@@ -19,6 +22,59 @@ func (s *ApiServer) lookupContainer(nameOrId string) (*TestContainer, error) {
 	return nil, statusError{
 		Code:    http.StatusNotFound,
 		Message: fmt.Sprintf("nameOrIf \"%s\" not found", nameOrId),
+	}
+}
+
+func (s *ApiServer) handleContainerArchive(ctx context.Context, resp http.ResponseWriter, req *http.Request) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	nameOrId := req.PathValue("nameOrId")
+	container, err := s.lookupContainer(nameOrId)
+
+	if err != nil {
+		return err
+	}
+
+	if req.Header.Get("content-type") != "application/x-tar" {
+		return statusError{
+			Code:    http.StatusUnsupportedMediaType,
+			Message: "Expected application/x-tar",
+		}
+	}
+
+	reader := tar.NewReader(req.Body)
+
+	for {
+		header, err := reader.Next()
+
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			} else {
+				return err
+			}
+		}
+
+		bytes := make([]byte, header.Size)
+		n, err := reader.Read(bytes)
+
+		if err != nil && err != io.EOF {
+			return err
+		}
+
+		if int64(n) != header.Size {
+			return fmt.Errorf("truncated read for %s", header.Name)
+		}
+
+		container.UploadLog = append(container.UploadLog, TestUpload{
+			Content:    base64.StdEncoding.EncodeToString(bytes),
+			Gid:        header.Gid,
+			Mode:       header.Mode,
+			Path:       header.Name,
+			WasRunning: container.Running,
+			Uid:        header.Uid,
+		})
 	}
 }
 
@@ -150,6 +206,8 @@ func (s *ApiServer) handleContainerStop(ctx context.Context, resp http.ResponseW
 // request, which is completely and pointlessly different and also isn't a
 // message format that this provider cares about beyond using it to verify the
 // current name of a container resource.
+//
+// It also gives access to a log of uploads to the container's filesystem.
 func (s *ApiServer) CaptureContainer(nameOrId string) (*TestContainer, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

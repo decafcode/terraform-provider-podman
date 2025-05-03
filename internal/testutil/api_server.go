@@ -14,10 +14,20 @@ type PullRequest struct {
 	Policy    string
 }
 
+type TestUpload struct {
+	Path       string
+	Content    string
+	Gid        int
+	Mode       int64
+	WasRunning bool
+	Uid        int
+}
+
 type TestContainer struct {
-	Id      string
-	Json    api.ContainerCreateJson
-	Running bool
+	Id        string
+	Json      api.ContainerCreateJson
+	Running   bool
+	UploadLog []TestUpload
 }
 
 type ApiServer struct {
