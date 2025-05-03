@@ -1,12 +1,81 @@
 package client
 
 import (
+	"archive/tar"
+	"encoding/base64"
 	"testing"
 
 	"github.com/decafcode/terraform-provider-podman/internal/api"
 	"github.com/decafcode/terraform-provider-podman/internal/testutil"
 	"gotest.tools/v3/assert"
 )
+
+func TestContainerArchive(t *testing.T) {
+	c := &testutil.TestContainer{
+		Id:   "1",
+		Json: api.ContainerCreateJson{Name: "one"},
+	}
+
+	apiServer := &testutil.ApiServer{
+		Containers: []*testutil.TestContainer{c},
+	}
+
+	f, err := spawnFramework(t.Context(), apiServer)
+	assert.NilError(t, err)
+
+	defer f.Stop(t.Context())
+
+	files := []struct {
+		path    string
+		content string
+	}{
+		{
+			path:    "/tmp/file1",
+			content: "First",
+		},
+		{
+			path:    "/tmp/file2",
+			content: "Second",
+		},
+	}
+
+	err = f.ContainerArchive(t.Context(), c.Json.Name, func(w *tar.Writer) error {
+		for _, file := range files {
+			bytes := []byte(file.content)
+
+			err := w.WriteHeader(&tar.Header{
+				Name: file.path,
+				Size: int64(len(bytes)),
+			})
+
+			if err != nil {
+				return err
+			}
+
+			_, err = w.Write(bytes)
+
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	assert.NilError(t, err)
+	expect := make([]testutil.TestUpload, len(files))
+
+	for i, file := range files {
+		expect[i] = testutil.TestUpload{
+			Path:    file.path,
+			Content: base64.StdEncoding.EncodeToString([]byte(file.content)),
+		}
+	}
+
+	snap, err := apiServer.CaptureContainer(c.Id)
+	assert.NilError(t, err)
+	assert.DeepEqual(t, snap.UploadLog, expect)
+}
 
 func TestContainerCreate(t *testing.T) {
 	apiServer := &testutil.ApiServer{}
