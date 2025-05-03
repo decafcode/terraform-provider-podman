@@ -52,6 +52,9 @@ Podman Container resource
 - `secret_env` (Map of String) A string-to-string map of Podman secrets to supply to the container as environment variables. The keys are environment variable names, and the values are names or IDs of Podman secrets.
 - `secrets` (Attributes List) A list of Podman secrets to mount into the container's filesystem. See `uploads` below for an alternative mechanism that accomplishes a similar goal. (see [below for nested schema](#nestedatt--secrets))
 - `start_immediately` (Boolean) Whether to immediately start this container after it has been created and the `uploads` attribute has been processed. Default is `true`.
+- `uploads` (Attributes List) A list of files to upload to this container. Files uploaded during container creation will be uploaded before the container is started, if applicable. Changes to this attribute will result in the changed files being re-uploaded to the existing container.
+
+	File content is not stored as part of Terraform state, so this mechanism can be used to supply secret data to the container such as private keys. However, it should only be used to upload small files, like secrets or configuration. (see [below for nested schema](#nestedatt--uploads))
 
 ### Read-Only
 
@@ -105,3 +108,22 @@ Required:
 Optional:
 
 - `path` (String) Path inside the container to mount the secret. Docker uses the convention `/run/secrets/<secret_name>`, but Podman allows arbitrary paths to be specified.
+
+
+<a id="nestedatt--uploads"></a>
+### Nested Schema for `uploads`
+
+Required:
+
+- `content` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The text or binary content to upload to the destination path (see `base64` attribute). This is a write-only attribute, so if you change this attribute then you will need to change the `contents_hash` attribute as well in order to trigger a re-upload.
+
+	Use Terraform's `file(...)` function to set this attribute from a local file. If you have set the `base64` attribute to `true` then you will need to use Terraform's `filebase64(...)` function instead.
+- `content_hash` (String) A hash of the value of `contents`. The actual hash algorithm does not matter as long as the hash changes every time the contents change. Changing the value of this attribute will trigger a re-upload of this file.
+- `path` (String) The absolute path of the file to create inside the container.
+
+Optional:
+
+- `base64` (Boolean) Set this flag to true to interpret the `contents` attribute as base64-encoded binary data. Otherwise the `contents` attribute will be stored into the target file as UTF-8 text.
+- `gid` (Number) The numerical group ID that will own the file that will be created. Defaults to 0 (root).
+- `mode` (Number) The numerical file mode to set on the file that will be created. HCL does not have any syntax for octal literals, so you may want to use Terraform's `parseint` function here (e.g. `parseint("644", 8)`). The default value is octal `0644` (i.e. 420 in decimal).
+- `uid` (Number) The numerical user ID that will own the file that will be created. Defaults to 0 (root).
