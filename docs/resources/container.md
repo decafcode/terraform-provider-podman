@@ -128,6 +128,9 @@ resource "podman_container" "postgres_17" {
 
   The most commonly used value for this option is `["disable"]`, which disables SELinux labelling. This lowers the security of the container, but it can be useful if you need to give the container access to Podman's API socket, since the standard SELinux policy will not let you do this by default even if you use the `Z` mount option when mounting the socket.
 - `start_immediately` (Boolean) Whether to immediately start this container after it has been created and the `uploads` attribute has been processed. Default is `true`.
+- `uploads` (Attributes List) A list of files to upload to this container. Files uploaded during container creation will be uploaded before the container is started, if applicable. Changes to this attribute will result in the changed files being re-uploaded to the existing container.
+
+  File content is not stored as part of Terraform state, so this mechanism can be used to supply secret data to the container such as private keys. However, it should only be used to upload small files, like secrets or configuration. (see [below for nested schema](#nestedatt--uploads))
 - `user` (Attributes) The security principal that will be used to launch this container, consisting of a user ID and an optional group ID. Each ID can be specified as either an integer or a name. If a name is used then its corresponding numeric ID will be looked up in the `/etc/passwd` or `/etc/group` file inside the container image as appropriate.
 
   If this attribute is not specified then the default UID and GID from the image will be used. (see [below for nested schema](#nestedatt--user))
@@ -191,6 +194,25 @@ Optional:
 Read-Only:
 
 - `mode` (Number) The numerical file mode to set on the file that holds the secret. HCL does not have any syntax for octal literals, so you may want to use Terraform's `parseint` function here (e.g. `parseint("400", 8)`). The default value is octal `0400` (i.e. 256 in decimal).
+
+
+<a id="nestedatt--uploads"></a>
+### Nested Schema for `uploads`
+
+Required:
+
+- `content` (String, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The text or binary content to upload to the destination path (see `base64` attribute). This is a write-only attribute, so if you change this attribute then you will need to change the `contents_hash` attribute as well in order to trigger a re-upload.
+
+  Use Terraform's `file(...)` function to set this attribute from a local file. If you have set the `base64` attribute to `true` then you will need to use Terraform's `filebase64(...)` function instead.
+- `content_hash` (String) A hash of the value of `contents`. The actual hash algorithm does not matter as long as the hash changes every time the contents change. Changing the value of this attribute will trigger a re-upload of this file.
+- `path` (String) The absolute path of the file to create inside the container.
+
+Optional:
+
+- `base64` (Boolean) Set this flag to true to interpret the `contents` attribute as base64-encoded binary data. Otherwise the `contents` attribute will be stored into the target file as UTF-8 text.
+- `gid` (Number) The numerical group ID that will own the file that will be created. Defaults to 0 (root). Group names can not be specified here due to Podman API limitations.
+- `mode` (Number) The numerical file mode to set on the file that will be created. HCL does not have any syntax for octal literals, so you may want to use Terraform's `parseint` function here (e.g. `parseint("644", 8)`). The default value is octal `0644` (i.e. 420 in decimal).
+- `uid` (Number) The numerical user ID that will own the file that will be created. Defaults to 0 (root). User names can not be specified here due to Podman API limitations.
 
 
 <a id="nestedatt--user"></a>

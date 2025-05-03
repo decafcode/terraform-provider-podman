@@ -52,6 +52,16 @@ type containerResourceUserModel struct {
 	User  types.String `tfsdk:"user"`
 }
 
+type containerResourceUploadModel struct {
+	Base64      types.Bool   `tfsdk:"base64"`
+	Content     types.String `tfsdk:"content"`
+	ContentHash types.String `tfsdk:"content_hash"`
+	Gid         types.Int32  `tfsdk:"gid"`
+	Mode        types.Int32  `tfsdk:"mode"`
+	Path        types.String `tfsdk:"path"`
+	Uid         types.Int32  `tfsdk:"uid"`
+}
+
 type containerResourceModel struct {
 	Command          types.List   `tfsdk:"command"`
 	ContainerHost    types.String `tfsdk:"container_host"`
@@ -68,8 +78,17 @@ type containerResourceModel struct {
 	SecretEnv        types.Map    `tfsdk:"secret_env"`
 	SelinuxOptions   types.List   `tfsdk:"selinux_options"`
 	StartImmediately types.Bool   `tfsdk:"start_immediately"`
+	Uploads          types.List   `tfsdk:"uploads"`
 	User             types.Object `tfsdk:"user"`
 	UserNamespace    types.Object `tfsdk:"user_namespace"`
+}
+
+type containerResourceUploadKey struct {
+	contentHash string
+	gid         int32
+	mode        int32
+	path        string
+	uid         int32
 }
 
 func (*containerResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -78,4 +97,14 @@ func (*containerResource) Metadata(ctx context.Context, req resource.MetadataReq
 
 func (r *containerResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	importState(ctx, req, resp)
+}
+
+func (u *containerResourceUploadModel) key() containerResourceUploadKey {
+	return containerResourceUploadKey{
+		contentHash: u.ContentHash.ValueString(),
+		gid:         u.Gid.ValueInt32(),
+		mode:        u.Mode.ValueInt32(),
+		path:        u.Path.ValueString(),
+		uid:         u.Uid.ValueInt32(),
+	}
 }

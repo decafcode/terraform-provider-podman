@@ -1,12 +1,14 @@
 package provider
 
 import (
+	"archive/tar"
 	"context"
 	"fmt"
 	"strings"
 
 	"github.com/decafcode/terraform-provider-podman/internal/api"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -80,6 +82,45 @@ func (co *containerResource) Create(ctx context.Context, req resource.CreateRequ
 
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	uploads := make([]containerResourceUploadModel, 0)
+	resp.Diagnostics.Append(data.Uploads.ElementsAs(ctx, &uploads, false)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if len(uploads) > 0 {
+		err = c.ContainerArchive(ctx, out.Id, func(arc *tar.Writer) error {
+			for i := range uploads {
+				var content types.String
+				d := req.Config.GetAttribute(
+					ctx,
+					path.Root("uploads").AtListIndex(i).AtName("content"),
+					&content)
+
+				if d.HasError() {
+					resp.Diagnostics.Append(d...)
+
+					return fmt.Errorf("error extracting upload content from Terraform config")
+				}
+
+				err := writeUpload(ctx, arc, &uploads[i], content.ValueString())
+
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			resp.Diagnostics.AddAttributeError(path.Root("uploads"), "File upload failed", err.Error())
+
+			return
+		}
 	}
 
 	if data.StartImmediately.ValueBool() {
