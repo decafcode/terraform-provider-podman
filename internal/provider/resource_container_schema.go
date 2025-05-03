@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
@@ -257,6 +258,77 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "Whether to immediately start this container after it has " +
 					"been created and the `uploads` attribute has been processed. Default is " +
 					"`true`.",
+				Optional: true,
+			},
+			"uploads": schema.ListNestedAttribute{
+				MarkdownDescription: "A list of files to upload to this container. Files uploaded " +
+					"during container creation will be uploaded before the container is " +
+					"started, if applicable. Changes to this attribute will result in the " +
+					"changed files being re-uploaded to the existing container.\n\n" +
+					"\tFile content is not stored as part of Terraform state, so this mechanism " +
+					"can be used to supply secret data to the container such as private keys. " +
+					"However, it should only be used to upload small files, like secrets or " +
+					"configuration.",
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"base64": schema.BoolAttribute{
+							MarkdownDescription: "Set this flag to true to interpret the " +
+								"`contents` attribute as base64-encoded binary data. Otherwise " +
+								"the `contents` attribute will be stored into the target file " +
+								"as UTF-8 text.",
+							Optional: true,
+						},
+						"content": schema.StringAttribute{
+							MarkdownDescription: "The text or binary content to upload to the " +
+								"destination path (see `base64` attribute). This is a " +
+								"write-only attribute, so if you change this attribute then " +
+								"you will need to change the `contents_hash` attribute as " +
+								"well in order to trigger a re-upload.\n\n" +
+								"\tUse Terraform's `file(...)` function to set this attribute " +
+								"from a local file. If you have set the `base64` attribute to " +
+								"`true` then you will need to use Terraform's " +
+								"`filebase64(...)` function instead.",
+							Required:  true,
+							WriteOnly: true,
+						},
+						"content_hash": schema.StringAttribute{
+							MarkdownDescription: "A hash of the value of `contents`. The " +
+								"actual hash algorithm does not matter as long as the hash " +
+								"changes every time the contents change. Changing the value of " +
+								"this attribute will trigger a re-upload of this file.",
+							Required: true,
+						},
+						"gid": schema.Int32Attribute{
+							Computed: true,
+							Default:  int32default.StaticInt32(0),
+							MarkdownDescription: "The numerical group ID that will own the " +
+								"file that will be created. Defaults to 0 (root).",
+							Optional: true,
+						},
+						"mode": schema.Int32Attribute{
+							Computed: true,
+							Default:  int32default.StaticInt32(0644),
+							MarkdownDescription: "The numerical file mode to set on the file " +
+								"that will be created. HCL does not have any syntax for octal " +
+								"literals, so you may want to use Terraform's `parseint` " +
+								"function here (e.g. `parseint(\"644\", 8)`). The default " +
+								"value is octal `0644` (i.e. 420 in decimal).",
+							Optional: true,
+						},
+						"path": schema.StringAttribute{
+							MarkdownDescription: "The absolute path of the file to create " +
+								"inside the container.",
+							Required: true,
+						},
+						"uid": schema.Int32Attribute{
+							Computed: true,
+							Default:  int32default.StaticInt32(0),
+							MarkdownDescription: "The numerical user ID that will own the file " +
+								"that will be created. Defaults to 0 (root).",
+							Optional: true,
+						},
+					},
+				},
 				Optional: true,
 			},
 			"user": schema.SingleNestedAttribute{
