@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 
+	"github.com/decafcode/terraform-provider-podman/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -87,6 +88,13 @@ func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
+	var value types.String
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("value"), &value)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
 	client, err := r.ps.getClient(ctx, data.ContainerHost.ValueString())
 
 	if err != nil {
@@ -95,9 +103,7 @@ func (r *secretResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	name := data.Name.ValueString()
-	value := data.Value.ValueString()
-	out, err := client.SecretCreate(ctx, name, value)
+	out, err := client.SecretCreate(ctx, data.Name.ValueString(), value.ValueString())
 
 	if err != nil {
 		resp.Diagnostics.AddError("Request failed", err.Error())
@@ -129,7 +135,13 @@ func (r *secretResource) Read(ctx context.Context, req resource.ReadRequest, res
 	json, err := c.SecretInspect(ctx, data.Id.ValueString())
 
 	if err != nil {
-		resp.Diagnostics.AddError("Error fetching secret", err.Error())
+		status, ok := err.(client.StatusCodeError)
+
+		if ok && status.StatusCode == 404 {
+			resp.State.RemoveResource(ctx)
+		} else {
+			resp.Diagnostics.AddError("Error inspecting secret", err.Error())
+		}
 
 		return
 	}

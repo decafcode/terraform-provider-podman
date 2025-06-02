@@ -224,16 +224,47 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 					"accomplishes a similar goal.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
+						"gid": schema.Int32Attribute{
+							Computed: true,
+							Default:  int32default.StaticInt32(0),
+							MarkdownDescription: "Numerical group ID that owns the secret " +
+								"file. Defaults to 0 (root). Due to Podman API limitations, " +
+								"a group name can not be specified here.",
+							Optional: true,
+							Validators: []validator.Int32{
+								int32validator.Between(0, 65535),
+							},
+						},
+						"mode": schema.Int32Attribute{
+							Computed: true,
+							Default:  int32default.StaticInt32(0400),
+							MarkdownDescription: "The numerical file mode to set on the file " +
+								"that holds the secret. HCL does not have any syntax for octal " +
+								"literals, so you may want to use Terraform's `parseint` " +
+								"function here (e.g. `parseint(\"400\", 8)`). The default " +
+								"value is octal `0400` (i.e. 256 in decimal).",
+						},
 						"path": schema.StringAttribute{
 							MarkdownDescription: "Path inside the container to mount the " +
 								"secret. Docker uses the convention " +
 								"`/run/secrets/<secret_name>`, but Podman allows arbitrary " +
 								"paths to be specified.",
-							Optional: true,
+							Required: true,
 						},
 						"secret": schema.StringAttribute{
 							MarkdownDescription: "The name or ID of the Podman secret to mount.",
 							Required:            true,
+						},
+						"uid": schema.Int32Attribute{
+							Computed: true,
+							Default:  int32default.StaticInt32(0),
+							MarkdownDescription: "Numerical user ID that owns the secret " +
+								"file. Defaults to 0 (root). Due to Podman API limitations, " +
+								"a user name can not be specified here.",
+							Optional: true,
+							Validators: []validator.Int32{
+								int32validator.Between(0, 65535),
+							},
 						},
 					},
 				},

@@ -40,8 +40,11 @@ type containerResourcePortMappingModel struct {
 }
 
 type containerResourceSecretModel struct {
+	Gid    types.Int32  `tfsdk:"gid"`
+	Mode   types.Int32  `tfsdk:"mode"`
 	Path   types.String `tfsdk:"path"`
 	Secret types.String `tfsdk:"secret"`
+	Uid    types.Int32  `tfsdk:"uid"`
 }
 
 type containerResourceUserModel struct {

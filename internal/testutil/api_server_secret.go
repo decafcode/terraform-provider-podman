@@ -3,6 +3,7 @@ package testutil
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/decafcode/terraform-provider-podman/internal/api"
@@ -35,9 +36,7 @@ func (s *ApiServer) handleSecretCreate(ctx context.Context, resp http.ResponseWr
 	}
 
 	name := query.Get("name")
-
-	var value string
-	err := readJson(req, &value)
+	bytes, err := io.ReadAll(req.Body)
 
 	if err != nil {
 		return err
@@ -59,7 +58,7 @@ func (s *ApiServer) handleSecretCreate(ctx context.Context, resp http.ResponseWr
 	s.nextId++
 	storedSecret := &api.SecretInspectJson{
 		Id:         fmt.Sprintf("%d", s.nextId),
-		SecretData: value,
+		SecretData: string(bytes),
 		Spec: api.SecretInspectSpecJson{
 			Name: name,
 		},
