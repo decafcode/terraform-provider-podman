@@ -255,8 +255,11 @@ func writeSecrets(ctx context.Context, in *types.List, out *[]api.ContainerCreat
 
 	for i := range models {
 		*out = append(*out, api.ContainerCreateSecretJson{
+			GID:    uint32(models[i].Gid.ValueInt32()),
+			Mode:   uint32(models[i].Mode.ValueInt32()),
 			Source: models[i].Secret.ValueString(),
 			Target: models[i].Path.ValueString(),
+			UID:    uint32(models[i].Uid.ValueInt32()),
 		})
 	}
 

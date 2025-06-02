@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 
 	"github.com/decafcode/terraform-provider-podman/internal/api"
@@ -87,6 +88,15 @@ func (c *Client) ContainerStart(ctx context.Context, nameOrId string) error {
 
 func (c *Client) ContainerStop(ctx context.Context, nameOrId string) error {
 	path := fmt.Sprintf("v5.0.0/libpod/containers/%s/stop?ignore=true", url.PathEscape(nameOrId))
+	err := c.resourceSignal(ctx, path)
 
-	return c.resourceSignal(ctx, path)
+	if err != nil {
+		status, ok := err.(StatusCodeError)
+
+		if ok && status.StatusCode == http.StatusNotModified {
+			return nil
+		}
+	}
+
+	return err
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/decafcode/terraform-provider-podman/internal/api"
+	"github.com/decafcode/terraform-provider-podman/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -137,7 +138,13 @@ func (r *networkResource) Read(ctx context.Context, req resource.ReadRequest, re
 	json, err := c.NetworkInspect(ctx, data.Id.ValueString())
 
 	if err != nil {
-		resp.Diagnostics.AddError("Error listing networks", err.Error())
+		status, ok := err.(client.StatusCodeError)
+
+		if ok && status.StatusCode == 404 {
+			resp.State.RemoveResource(ctx)
+		} else {
+			resp.Diagnostics.AddError("Error inspecting network", err.Error())
+		}
 
 		return
 	}
