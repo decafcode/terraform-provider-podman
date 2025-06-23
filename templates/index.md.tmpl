@@ -1,0 +1,11 @@
+# Podman Provider
+
+Deploy containers and associated configuration using Podman's native management API.
+
+Note: Neither the native Podman API nor the original Docker API that it is closely modeled on places much emphasis on round-trip stability of the resources that these APIs configure. As a result, this Terraform provider's support for resource imports and state reconciliation is limited.
+
+## Example Usage
+
+{{ tffile .ExampleFile }}
+
+{{ .SchemaMarkdown }}
