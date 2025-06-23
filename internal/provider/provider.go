@@ -95,7 +95,7 @@ func (p *podmanProvider) Schema(ctx context.Context, req provider.SchemaRequest,
 			},
 			"host_key_algorithms": schema.ListAttribute{
 				ElementType: types.StringType,
-				MarkdownDescription: "An ordered list of public key type names (of the kind found in the second field of an entry in your `~/.ssh/authorized_keys` file) to request from remote SSH servers. If this is not specified then the default sequence of algorithms built in to the Go `crypto/ssh` library will be used.\n\n" +
+				MarkdownDescription: "An ordered list of public key type names (of the kind found in the second field of an entry in your `~/.ssh/authorized_keys` file) to request from remote SSH servers. If this is not specified then the default sequence of algorithms built into the Go `crypto/ssh` library will be used.\n\n" +
 					"  The first key type that the server supports will be used for SSH host key checks and any other host key types will be ignored. This is less secure than OpenSSH, which checks all of a remote host's known keys, but this deficiency is due to what appears to be a limitation in the API of Go's `crypto/ssh` module.\n\n" +
 					"  The `crypto/ssh` module seems to start negotiations by requesting host keys based on NIST elliptic curves by default, so you might want to specify `[\"ssh-ed25519\"]` here to force the use of the less-dubious Ed25519 algorithm instead.",
 				Optional: true,
