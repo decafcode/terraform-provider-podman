@@ -2,12 +2,14 @@ package provider
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/url"
 	"sync"
 
 	"github.com/decafcode/terraform-provider-podman/internal/client"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -18,7 +20,8 @@ type PodmanProviderEnv struct {
 }
 
 type podmanProviderState struct {
-	DefaultHost string
+	DefaultHost       string
+	HostKeyAlgorithms []string
 
 	mutex    sync.Mutex
 	hosts    map[string]*client.Client
@@ -75,10 +78,51 @@ func (d *podmanProviderState) getClient(ctx context.Context, host string) (*clie
 		authMethods = append(authMethods, ssh.PublicKeysCallback(d.sshAgent.Signers))
 	}
 
+	var hostKeyCallback ssh.HostKeyCallback
+
+	if u.Scheme == "ssh" {
+		values, err := url.ParseQuery(u.EscapedFragment())
+
+		if err != nil {
+			return nil, err
+		}
+
+		if values.Has("pubkey") {
+			expectedKey := values.Get("pubkey")
+			hostKeyCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+				actualKey := key.Type() + " " + base64.StdEncoding.EncodeToString(key.Marshal())
+
+				// This is not a timing-safe comparison, but public keys are not generally
+				// considered to be a secret to begin with so this is probably fine.
+
+				if expectedKey != actualKey {
+					return fmt.Errorf(
+						"public key mismatch!\nExpected : %s\nActual   : %s",
+						expectedKey,
+						actualKey)
+				}
+
+				return nil
+			}
+		} else if values.Get("trust_unknown_host") == "1" {
+			tflog.Warn(
+				ctx,
+				"SSH host public key was not specified, this is strongly discouraged and highly insecure!",
+			)
+
+			hostKeyCallback = ssh.InsecureIgnoreHostKey()
+		} else {
+			return nil, fmt.Errorf(
+				"ssh container_host URL must end with #pubkey=... or #trust_unknown_host=1",
+			)
+		}
+	}
+
 	config := client.Config{
 		Ssh: ssh.ClientConfig{
-			Auth:            authMethods,
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Auth:              authMethods,
+			HostKeyAlgorithms: d.HostKeyAlgorithms,
+			HostKeyCallback:   hostKeyCallback,
 		},
 	}
 
