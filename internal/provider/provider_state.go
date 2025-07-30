@@ -2,12 +2,14 @@ package provider
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/url"
 	"sync"
 
 	"github.com/decafcode/terraform-provider-podman/internal/client"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -24,6 +26,18 @@ type podmanProviderState struct {
 	mutex    sync.Mutex
 	hosts    map[string]*client.Client
 	sshAgent agent.ExtendedAgent
+}
+
+type publicKeyMismatchError struct {
+	expectedKey string
+	actualKey   string
+}
+
+func (e publicKeyMismatchError) Error() string {
+	return fmt.Sprintf(
+		"public key mismatch!\nExpected : %s\nActual   : %s\n",
+		e.expectedKey,
+		e.actualKey)
 }
 
 func newProviderState(env *PodmanProviderEnv) (*podmanProviderState, error) {
@@ -80,8 +94,39 @@ func (d *podmanProviderState) getClient(ctx context.Context, host string) (*clie
 		Ssh: ssh.ClientConfig{
 			Auth:              authMethods,
 			HostKeyAlgorithms: d.HostKeyAlgorithms,
-			HostKeyCallback:   ssh.InsecureIgnoreHostKey(),
 		},
+	}
+
+	if u.Scheme == "ssh" {
+		values, err := url.ParseQuery(u.Fragment)
+
+		if err != nil {
+			return nil, err
+		}
+
+		expectedKey := values.Get("pubkey")
+
+		if expectedKey == "" {
+			tflog.Warn(
+				ctx,
+				"SSH host public key was not specified, this is strongly discouraged and highly insecure! Please add a #pubkey=... URL fragment parameter to this URL.",
+			)
+
+			config.Ssh.HostKeyCallback = ssh.InsecureIgnoreHostKey()
+		} else {
+			config.Ssh.HostKeyCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+				actualKey := key.Type() + " " + base64.StdEncoding.EncodeToString(key.Marshal())
+
+				// This is not a timing-safe comparison, but public keys are not generally
+				// considered to be a secret to begin with so this is probably fine.
+
+				if expectedKey != actualKey {
+					return publicKeyMismatchError{expectedKey, actualKey}
+				}
+
+				return nil
+			}
+		}
 	}
 
 	c, err := client.Connect(ctx, u, &config)
