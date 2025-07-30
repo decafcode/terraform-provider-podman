@@ -18,7 +18,8 @@ type PodmanProviderEnv struct {
 }
 
 type podmanProviderState struct {
-	DefaultHost string
+	DefaultHost       string
+	HostKeyAlgorithms []string
 
 	mutex    sync.Mutex
 	hosts    map[string]*client.Client
@@ -77,8 +78,9 @@ func (d *podmanProviderState) getClient(ctx context.Context, host string) (*clie
 
 	config := client.Config{
 		Ssh: ssh.ClientConfig{
-			Auth:            authMethods,
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Auth:              authMethods,
+			HostKeyAlgorithms: d.HostKeyAlgorithms,
+			HostKeyCallback:   ssh.InsecureIgnoreHostKey(),
 		},
 	}
 
