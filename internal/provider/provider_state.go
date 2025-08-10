@@ -87,7 +87,18 @@ func (d *podmanProviderState) getClient(ctx context.Context, host string) (*clie
 			return nil, err
 		}
 
-		if values.Has("pubkey") {
+		if values.Has("ca") {
+			trustedCa := values.Get("ca")
+			checker := &ssh.CertChecker{
+				IsHostAuthority: func(auth ssh.PublicKey, address string) bool {
+					remoteCa := auth.Type() + " " + base64.StdEncoding.EncodeToString(auth.Marshal())
+
+					return remoteCa == trustedCa
+				},
+			}
+
+			hostKeyCallback = checker.CheckHostKey
+		} else if values.Has("pubkey") {
 			expectedKey := values.Get("pubkey")
 			hostKeyCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 				actualKey := key.Type() + " " + base64.StdEncoding.EncodeToString(key.Marshal())
@@ -113,7 +124,7 @@ func (d *podmanProviderState) getClient(ctx context.Context, host string) (*clie
 			hostKeyCallback = ssh.InsecureIgnoreHostKey()
 		} else {
 			return nil, fmt.Errorf(
-				"ssh container_host URL must end with #pubkey=... or #trust_unknown_host=1",
+				"ssh container_host URL must end with #ca=... or #pubkey=... or #trust_unknown_host=1",
 			)
 		}
 	}

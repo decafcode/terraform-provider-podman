@@ -1,9 +1,11 @@
 package provider
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/decafcode/terraform-provider-podman/internal/provider"
@@ -25,7 +27,8 @@ var providerFactories = map[string]func() (tfprotov6.ProviderServer, error){
 }
 
 func TestAccSshCommunication(t *testing.T) {
-	hostPublicKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEahKBGUmHUA4MZgJ3pi4vZMfgB1KXbh33WExUh688Jh"
+	caPublicKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOzMB/yLNO/Kd8qCrKpBp2Gd4MYb3ZdqK17wxbkDqJpO"
+	hostPublicKey := "ssh-ed25519-cert-v01@openssh.com AAAAIHNzaC1lZDI1NTE5LWNlcnQtdjAxQG9wZW5zc2guY29tAAAAIE3iQn89N+NB66PoomeEammZAQLGf8xnSiCYYfKDziQSAAAAIEahKBGUmHUA4MZgJ3pi4vZMfgB1KXbh33WExUh688JhAAAAAAAAAAAAAAACAAAACWxvY2FsaG9zdAAAAAAAAAAAAAAAAP//////////AAAAAAAAAAAAAAAAAAAAMwAAAAtzc2gtZWQyNTUxOQAAACDszAf8izTvynfKgqyqQadhneDGG92Xaite8MW5A6iaTgAAAFMAAAALc3NoLWVkMjU1MTkAAABArOaKykP6KRrbtOarRqhRoJjS1RGSOSBg9of30y9E8y3RKvpE3WGp5JZnuael3vUqAsAVQ+RGFgCxhdj8jRgPBQ=="
 	othrPublicKey := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuFDZbl5ys7JJlRYPCSjAiPwprkNMS7Uzg2xYI0GWR3"
 	hostPrivateKey, err := ssh.ParsePrivateKey([]byte(`
 -----BEGIN OPENSSH PRIVATE KEY-----
@@ -39,8 +42,20 @@ fgB1KXbh33WExUh688JhAAAAC3RhdUB0b29sYm94AQI=
 
 	assert.NilError(t, err)
 
+	pubKeyBytes, err := base64.StdEncoding.DecodeString(strings.Split(hostPublicKey, " ")[1])
+	assert.NilError(t, err)
+
+	hostPublicKeyObj, err := ssh.ParsePublicKey(pubKeyBytes)
+	assert.NilError(t, err)
+
+	cert, ok := hostPublicKeyObj.(*ssh.Certificate)
+	assert.Equal(t, ok, true)
+
+	hostSigner, err := ssh.NewCertSigner(cert, hostPrivateKey)
+	assert.NilError(t, err)
+
 	apiServer := testutil.ApiServer{}
-	f, err := spawnSshFramework(t.Context(), hostPrivateKey, &apiServer)
+	f, err := spawnSshFramework(t.Context(), hostSigner, &apiServer)
 	assert.NilError(t, err)
 
 	defer f.Stop(t.Context())
@@ -75,7 +90,8 @@ fgB1KXbh33WExUh688JhAAAAC3RhdUB0b29sYm94AQI=
 				`, f.Url()),
 			},
 			{
-				// Verify host key verification
+				// Verify host key verification by checking for the specific
+				// certificate being used as the host's public key
 				Config: fmt.Sprintf(`
 					resource "podman_network" "test3" {
 						container_host = "%s#pubkey=%s"
@@ -92,6 +108,26 @@ fgB1KXbh33WExUh688JhAAAAC3RhdUB0b29sYm94AQI=
 					}
 				`, f.Url(), url.QueryEscape(othrPublicKey)),
 				ExpectError: regexp.MustCompile("public key mismatch"),
+			},
+			{
+				// Trust anything signed by the CA that signed our test host's
+				// certificate, not just that specific certificate.
+				Config: fmt.Sprintf(`
+					resource "podman_network" "test5" {
+						container_host = "%s#ca=%s"
+						name           = "test5"
+					}
+				`, f.Url(), url.QueryEscape(caPublicKey)),
+			},
+			{
+				// Check that the CA signature is actually being verified
+				Config: fmt.Sprintf(`
+					resource "podman_network" "test6" {
+						container_host = "%s#ca=%s"
+						name           = "test6"
+					}
+				`, f.Url(), url.QueryEscape(othrPublicKey)),
+				ExpectError: regexp.MustCompile("no authorities for hostname"),
 			},
 		},
 	})
