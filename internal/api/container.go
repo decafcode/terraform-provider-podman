@@ -1,5 +1,9 @@
 package api
 
+type ContainerCreateDeviceJson struct {
+	Path string `json:"path"`
+}
+
 type ContainerCreateMountJson struct {
 	Destination string
 	Options     []string
@@ -35,6 +39,7 @@ type ContainerCreateJson struct {
 	Name          string                                `json:"name,omitempty"`
 	Image         string                                `json:"image,omitempty"`
 	Command       []string                              `json:"command,omitempty"`
+	Devices       []ContainerCreateDeviceJson           `json:"devices,omitempty"`
 	Env           map[string]string                     `json:"env,omitempty"`
 	Entrypoint    []string                              `json:"entrypoint,omitempty"`
 	Labels        map[string]string                     `json:"labels"`

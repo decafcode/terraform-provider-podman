@@ -40,6 +40,7 @@ func (co *containerResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	resp.Diagnostics.Append(data.Command.ElementsAs(ctx, &in.Command, false)...)
+	resp.Diagnostics.Append(writeDevices(ctx, &data.Devices, &in.Devices)...)
 	resp.Diagnostics.Append(data.Entrypoint.ElementsAs(ctx, &in.Entrypoint, false)...)
 	resp.Diagnostics.Append(data.Env.ElementsAs(ctx, &in.Env, false)...)
 	resp.Diagnostics.Append(data.Labels.ElementsAs(ctx, &in.Labels, false)...)
@@ -131,6 +132,25 @@ func (co *containerResource) Create(ctx context.Context, req resource.CreateRequ
 			resp.Diagnostics.AddError("Container start failed", err.Error())
 		}
 	}
+}
+
+func writeDevices(ctx context.Context, in *types.List, out *[]api.ContainerCreateDeviceJson) diag.Diagnostics {
+	var result diag.Diagnostics
+
+	models := make([]containerResourceDeviceModel, 0)
+	result.Append(in.ElementsAs(ctx, &models, false)...)
+
+	if result.HasError() {
+		return result
+	}
+
+	for _, inItem := range models {
+		*out = append(*out, api.ContainerCreateDeviceJson{
+			Path: inItem.Path.ValueString(),
+		})
+	}
+
+	return result
 }
 
 func writeMounts(ctx context.Context, in *types.List, out *[]api.ContainerCreateMountJson) diag.Diagnostics {

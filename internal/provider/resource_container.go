@@ -16,6 +16,10 @@ type containerResource struct {
 	resourceBase
 }
 
+type containerResourceDeviceModel struct {
+	Path types.String `tfsdk:"path"`
+}
+
 type containerResourceMountModel struct {
 	Target  types.String `tfsdk:"target"`
 	Options types.List   `tfsdk:"options"`
@@ -65,6 +69,7 @@ type containerResourceUploadModel struct {
 type containerResourceModel struct {
 	Command          types.List   `tfsdk:"command"`
 	ContainerHost    types.String `tfsdk:"container_host"`
+	Devices          types.List   `tfsdk:"devices"`
 	Entrypoint       types.List   `tfsdk:"entrypoint"`
 	Env              types.Map    `tfsdk:"env"`
 	Id               types.String `tfsdk:"id"`

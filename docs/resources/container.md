@@ -94,6 +94,7 @@ resource "podman_container" "postgres_17" {
 
 - `command` (List of String) Override the default command specified by this container's image.
 - `container_host` (String) URL of the container host where this resource resides
+- `devices` (Attributes List) A list of device nodes to make available to the container. (see [below for nested schema](#nestedatt--devices))
 - `entrypoint` (List of String) Override the container entry point supplied by the image.
 - `env` (Map of String) Environment variables to set in this container. This is in addition to any environment variables specified by the image.
 - `labels` (Map of String) Labels to attach to this container in the Podman and Docker API.
@@ -140,6 +141,14 @@ resource "podman_container" "postgres_17" {
 ### Read-Only
 
 - `id` (String) Container ID assigned by Podman
+
+<a id="nestedatt--devices"></a>
+### Nested Schema for `devices`
+
+Required:
+
+- `path` (String) Absolute path to a `/dev` node
+
 
 <a id="nestedatt--mounts"></a>
 ### Nested Schema for `mounts`
