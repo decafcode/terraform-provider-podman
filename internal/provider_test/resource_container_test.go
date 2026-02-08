@@ -41,6 +41,12 @@ func TestAccContainerResource(t *testing.T) {
 						restart_policy = "always"
 						selinux_options = ["disable"]
 
+						devices = [
+							{
+								path = "/dev/dri"
+							}
+						]
+
 						env = {
 							"MYENV" = "envvalue"
 						}
@@ -114,6 +120,11 @@ func TestAccContainerResource(t *testing.T) {
 							RestartPolicy: "always",
 							SelinuxOpts:   []string{"disable"},
 
+							Devices: []api.ContainerCreateDeviceJson{
+								{
+									Path: "/dev/dri",
+								},
+							},
 							Env: map[string]string{
 								"MYENV": "envvalue",
 							},

@@ -40,6 +40,21 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
+			"devices": schema.ListNestedAttribute{
+				MarkdownDescription: "A list of device nodes to make available to the container.",
+				Optional:            true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"path": schema.StringAttribute{
+							MarkdownDescription: "Absolute path to a `/dev` node",
+							Required:            true,
+						},
+					},
+				},
+				PlanModifiers: []planmodifier.List{
+					listplanmodifier.RequiresReplaceIfConfigured(),
+				},
+			},
 			"entrypoint": schema.ListAttribute{
 				ElementType:         types.StringType,
 				MarkdownDescription: "Override the container entry point supplied by the image.",

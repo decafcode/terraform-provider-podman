@@ -3,6 +3,7 @@
 FEATURES:
 
 - Add `podman_network.ipv6_enabled` attribute
+- Add `podman_container.devices` attribute
 
 FIXES:
 
