@@ -63,6 +63,10 @@ func TestAccContainerResource(t *testing.T) {
 							}
 						]
 
+						network_namespace = {
+							mode = "host"
+						}
+
 						networks = [
 							{
 								id = "networkid"
@@ -140,7 +144,7 @@ func TestAccContainerResource(t *testing.T) {
 								},
 							},
 							Netns: api.ContainerCreateNamespaceJson{
-								NSMode: "bridge",
+								NSMode: "host",
 							},
 							Networks: map[string]api.ContainerCreateNetworkJson{
 								"networkid": {},
@@ -173,6 +177,39 @@ func TestAccContainerResource(t *testing.T) {
 							User: "myuser:mygroup",
 						},
 						Running: true,
+					})()
+
+					if !result.Success() {
+						t.Log(result)
+
+						return fmt.Errorf("incorrect post payload")
+					}
+
+					return nil
+				},
+			},
+			{
+				// Test network namespace defaulting
+				Config: fmt.Sprintf(`
+					resource "podman_container" "netns" {
+						container_host    = "%s"
+						image             = "example.com/library/test:v1.0.0"
+						name              = "netns"
+					}
+				`, framework.Url()),
+				Check: func(_ *terraform.State) error {
+					capture, err := apiServer.CaptureContainer("netns")
+
+					if err != nil {
+						return err
+					}
+
+					result := cmp.DeepEqual(capture.Json, api.ContainerCreateJson{
+						Name:  "netns",
+						Image: "example.com/library/test:v1.0.0",
+						Netns: api.ContainerCreateNamespaceJson{
+							NSMode: "bridge",
+						},
 					})()
 
 					if !result.Success() {

@@ -106,6 +106,13 @@ resource "podman_container" "postgres_17" {
 - `name` (String) Name to assign to this container. Other containers on the same Podman network as this container will be able to discover this container's private IP address by looking up its name using DNS. Do note, however, that these DNS lookups do not work on Podman's default network (see description of `networks` below).
 
   If you do not specify a name here then a random name will be assigned by Podman. Assigning an explicit name is strongly recommended.
+- `network_namespace` (Attributes) Configure the network namespace that this container will be attached to, also known as the "network mode". Use this option with care as it may inadvertently give the container the ability to perform privileged operations on the host!
+
+  Containers are restricted to communicating on isolated virtual networks by default, and any direct interaction with their ports from outside the container runtime requires those ports to be explicitly forwarded using port mappings (see `port_mappings` attribute below). Certain privileged containers may require the use of the `host` network mode, which allows the container to communicate on the host's IP addresses and network interfaces directly, but also grants access to host-local inter-process communication mechanisms like UNIX domain sockets, which may compromise the container's security boundary (hence the security admonition above).
+
+  Defaults to `bridge` mode for compatibility with previous releases of this provider, which is also Podman's built-in default for rootful containers (but not rootless containers, which Podman defaults to `pasta` since they lack the root privileges required to set up `bridge` mode).
+
+  Other options are also possible. Please consult Podman's [upstream documentation](https://docs.podman.io/en/v5.5.2/markdown/podman-create.1.html#network-mode-net) for details. (see [below for nested schema](#nestedatt--network_namespace))
 - `networks` (Attributes List) A list of Podman networks that this container should join. If this list is omitted or empty then the container will be added to the default Podman network.
 
   Podman networks allow participating containers to resolve the private IP addresses of other containers on the same network by looking up the names of those containers using DNS: this lookup is performed on just the bare name of the target container without any further qualifying domains.
@@ -164,6 +171,18 @@ Optional:
 
   Note: If you are specifying a bind mount (the default mount type) and the host machine has SELinux enabled (which is usually the case, since Podman is typically used from Red Hat based distributions) then you will want to specify `["Z"]` here, otherwise the processes running in the container will be denied access to this mount.
 - `type` (String) What kind of mount to create. This affects the meaning of of the other attributes in this object. If this is not specified then the default is `bind`, which is probably what you want in most cases.
+
+
+<a id="nestedatt--network_namespace"></a>
+### Nested Schema for `network_namespace`
+
+Required:
+
+- `mode` (String)
+
+Optional:
+
+- `options` (List of String)
 
 
 <a id="nestedatt--networks"></a>

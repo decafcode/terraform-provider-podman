@@ -7,12 +7,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -22,6 +24,16 @@ import (
 )
 
 func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	var namespaceAttrs = map[string]schema.Attribute{
+		"mode": schema.StringAttribute{
+			Required: true,
+		},
+		"options": schema.ListAttribute{
+			ElementType: types.StringType,
+			Optional:    true,
+		},
+	}
+
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Podman Container resource",
 		Attributes: map[string]schema.Attribute{
@@ -130,6 +142,30 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "Name to assign to this container. Other containers on the same Podman network as this container will be able to discover this container's private IP address by looking up its name using DNS. Do note, however, that these DNS lookups do not work on Podman's default network (see description of `networks` below).\n\n" +
 					"  If you do not specify a name here then a random name will be assigned by Podman. Assigning an explicit name is strongly recommended.",
 				Optional: true,
+			},
+			"network_namespace": schema.SingleNestedAttribute{
+				Attributes: namespaceAttrs,
+				Computed:   true,
+				Default: objectdefault.StaticValue(types.ObjectValueMust(
+					map[string]attr.Type{
+						"mode": types.StringType,
+						"options": types.ListType{
+							ElemType: types.StringType,
+						},
+					},
+					map[string]attr.Value{
+						"mode":    types.StringValue("bridge"),
+						"options": types.ListNull(types.StringType),
+					},
+				)),
+				MarkdownDescription: "Configure the network namespace that this container will be attached to, also known as the \"network mode\". Use this option with care as it may inadvertently give the container the ability to perform privileged operations on the host!\n\n" +
+					"  Containers are restricted to communicating on isolated virtual networks by default, and any direct interaction with their ports from outside the container runtime requires those ports to be explicitly forwarded using port mappings (see `port_mappings` attribute below). Certain privileged containers may require the use of the `host` network mode, which allows the container to communicate on the host's IP addresses and network interfaces directly, but also grants access to host-local inter-process communication mechanisms like UNIX domain sockets, which may compromise the container's security boundary (hence the security admonition above).\n\n" +
+					"  Defaults to `bridge` mode for compatibility with previous releases of this provider, which is also Podman's built-in default for rootful containers (but not rootless containers, which Podman defaults to `pasta` since they lack the root privileges required to set up `bridge` mode).\n\n" +
+					"  Other options are also possible. Please consult Podman's [upstream documentation](https://docs.podman.io/en/v5.5.2/markdown/podman-create.1.html#network-mode-net) for details.",
+				Optional: true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.RequiresReplaceIfConfigured(),
+				},
 			},
 			"networks": schema.ListNestedAttribute{
 				MarkdownDescription: "A list of Podman networks that this container should join. If this list is omitted or empty then the container will be added to the default Podman network.\n\n" +
@@ -335,16 +371,8 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 				},
 			},
 			"user_namespace": schema.SingleNestedAttribute{
-				Attributes: map[string]schema.Attribute{
-					"mode": schema.StringAttribute{
-						Required: true,
-					},
-					"options": schema.ListAttribute{
-						ElementType: types.StringType,
-						Optional:    true,
-					},
-				},
-				Optional: true,
+				Attributes: namespaceAttrs,
+				Optional:   true,
 				PlanModifiers: []planmodifier.Object{
 					objectplanmodifier.RequiresReplace(),
 				},
