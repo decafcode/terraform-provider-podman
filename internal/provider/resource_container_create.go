@@ -33,10 +33,6 @@ func (co *containerResource) Create(ctx context.Context, req resource.CreateRequ
 		Secrets:       make([]api.ContainerCreateSecretJson, 0),
 		SecretEnv:     make(map[string]string, 0),
 		SelinuxOpts:   make([]string, 0),
-		Netns: api.ContainerCreateNamespaceJson{
-			// This is hardcoded for now
-			NSMode: "bridge",
-		},
 	}
 
 	resp.Diagnostics.Append(data.Command.ElementsAs(ctx, &in.Command, false)...)
@@ -45,6 +41,7 @@ func (co *containerResource) Create(ctx context.Context, req resource.CreateRequ
 	resp.Diagnostics.Append(data.Env.ElementsAs(ctx, &in.Env, false)...)
 	resp.Diagnostics.Append(data.Labels.ElementsAs(ctx, &in.Labels, false)...)
 	resp.Diagnostics.Append(writeMounts(ctx, &data.Mounts, &in.Mounts)...)
+	resp.Diagnostics.Append(writeNamespace(ctx, &data.NetworkNamespace, &in.Netns)...)
 	resp.Diagnostics.Append(writeNetworks(ctx, &data.Networks, &in.Networks)...)
 	resp.Diagnostics.Append(writePortMappings(ctx, &data.PortMappings, &in.PortMappings)...)
 	resp.Diagnostics.Append(writeSecrets(ctx, &data.Secrets, &in.Secrets)...)

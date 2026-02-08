@@ -77,6 +77,7 @@ type containerResourceModel struct {
 	Labels           types.Map    `tfsdk:"labels"`
 	Mounts           types.List   `tfsdk:"mounts"`
 	Name             types.String `tfsdk:"name"`
+	NetworkNamespace types.Object `tfsdk:"network_namespace"`
 	Networks         types.List   `tfsdk:"networks"`
 	PortMappings     types.List   `tfsdk:"port_mappings"`
 	RestartPolicy    types.String `tfsdk:"restart_policy"`
