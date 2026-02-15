@@ -33,10 +33,10 @@ type containerResourceNetworkModel struct {
 }
 
 type containerResourcePortMappingModel struct {
-	ContainerPort types.Int32         `tfsdk:"container_port"`
-	HostIP        iptypes.IPv4Address `tfsdk:"host_ip"`
-	HostPort      types.Int32         `tfsdk:"host_port"`
-	Protocols     types.List          `tfsdk:"protocols"`
+	ContainerPort types.Int32       `tfsdk:"container_port"`
+	HostIP        iptypes.IPAddress `tfsdk:"host_ip"`
+	HostPort      types.Int32       `tfsdk:"host_port"`
+	Protocols     types.List        `tfsdk:"protocols"`
 }
 
 type containerResourceSecretModel struct {

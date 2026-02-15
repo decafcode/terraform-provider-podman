@@ -175,7 +175,7 @@ Required:
 
 Optional:
 
-- `host_ip` (String) Host IPv4 address to bind to. Binds to all interfaces if omitted.
+- `host_ip` (String) Host IPv4 or IPv6 address to bind to. Binds to all IPv4 addresses by default.
 - `protocols` (List of String) IP protocols to forward. Must be some combination of `tcp`, `udp`, and `sctp`. Defaults to `["tcp"]`.
 
 
