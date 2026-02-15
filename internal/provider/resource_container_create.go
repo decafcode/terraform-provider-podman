@@ -4,7 +4,10 @@ import (
 	"archive/tar"
 	"context"
 	"fmt"
+	"math/big"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/decafcode/terraform-provider-podman/internal/api"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -39,6 +42,7 @@ func (co *containerResource) Create(ctx context.Context, req resource.CreateRequ
 	resp.Diagnostics.Append(writeDevices(ctx, &data.Devices, &in.Devices)...)
 	resp.Diagnostics.Append(data.Entrypoint.ElementsAs(ctx, &in.Entrypoint, false)...)
 	resp.Diagnostics.Append(data.Env.ElementsAs(ctx, &in.Env, false)...)
+	resp.Diagnostics.Append(writeHealth(ctx, &data.Health, &in.HealthConfig)...)
 	resp.Diagnostics.Append(data.Labels.ElementsAs(ctx, &in.Labels, false)...)
 	resp.Diagnostics.Append(writeMounts(ctx, &data.Mounts, &in.Mounts)...)
 	resp.Diagnostics.Append(writeNamespace(ctx, &data.NetworkNamespace, &in.Netns)...)
@@ -145,6 +149,106 @@ func writeDevices(ctx context.Context, in *types.List, out *[]api.ContainerCreat
 		*out = append(*out, api.ContainerCreateDeviceJson{
 			Path: inItem.Path.ValueString(),
 		})
+	}
+
+	return result
+}
+
+func writeDuration(in *types.Number, out *time.Duration) diag.Diagnostics {
+	var result diag.Diagnostics
+
+	if in.IsNull() {
+		// The documentation for in.ValueBigFloat() seems wrong, if `in` is null then
+		// this method doesn't return 0.0, it returns nil.
+		return result
+	}
+
+	sec := in.ValueBigFloat()
+
+	if sec.Sign() < 0 {
+		// There doesn't seem to be a non-negative numbervalidator, so we have to check this manually.
+		result.AddError("Negative duration", "Negative duration")
+
+		return result
+	}
+
+	nsPerSec := big.NewFloat(1e9)
+	ns := &big.Float{}
+
+	ns.Mul(sec, nsPerSec)
+
+	nsInt, acc := ns.Int64()
+
+	if acc != big.Exact {
+		result.AddError("Excessive duration", "Excessive duration")
+
+		return result
+	}
+
+	*out = time.Duration(nsInt)
+
+	return result
+}
+
+func writeHealth(ctx context.Context, in *types.Object, out **api.ContainerCreateHealthConfigJson) diag.Diagnostics {
+	var result diag.Diagnostics
+	var model containerResourceHealthModel
+
+	if in.IsNull() {
+		return result
+	}
+
+	result.Append(in.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+
+	if result.HasError() {
+		return result
+	}
+
+	var json = &api.ContainerCreateHealthConfigJson{}
+
+	result.Append(writeHealthCheck(ctx, &model.Check, &json.Test)...)
+	result.Append(writeDuration(&model.Interval, &json.Interval)...)
+	json.Retries = model.Retries.ValueInt32()
+	result.Append(writeDuration(&model.StartInterval, &json.StartInterval)...)
+	result.Append(writeDuration(&model.StartPeriod, &json.StartPeriod)...)
+	result.Append(writeDuration(&model.Timeout, &json.Timeout)...)
+
+	if result.HasError() {
+		return result
+	}
+
+	*out = json
+
+	return result
+}
+
+func writeHealthCheck(ctx context.Context, in *types.Object, out *[]string) diag.Diagnostics {
+	var result diag.Diagnostics
+	var model containerResourceHealthCheckModel
+
+	if in.IsNull() {
+		return result
+	}
+
+	result.Append(in.As(ctx, &model, basetypes.ObjectAsOptions{})...)
+
+	if result.HasError() {
+		return result
+	}
+
+	if !model.Command.IsNull() {
+		value := make([]string, 0)
+		result.Append(model.Command.ElementsAs(ctx, &value, false)...)
+
+		if result.HasError() {
+			return result
+		}
+
+		*out = slices.Concat([]string{"CMD"}, value)
+	} else if !model.Disabled.IsNull() {
+		*out = []string{"NONE"}
+	} else if !model.ShellCommand.IsNull() {
+		*out = []string{"CMD-SHELL", model.ShellCommand.ValueString()}
 	}
 
 	return result

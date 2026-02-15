@@ -97,6 +97,7 @@ resource "podman_container" "postgres_17" {
 - `devices` (Attributes List) A list of device nodes to make available to the container. (see [below for nested schema](#nestedatt--devices))
 - `entrypoint` (List of String) Override the container entry point supplied by the image.
 - `env` (Map of String) Environment variables to set in this container. This is in addition to any environment variables specified by the image.
+- `health` (Attributes) Override the health check specified by the container image. All durations are in floating-point seconds, and any omitted values will default to the value specified by the container image. (see [below for nested schema](#nestedatt--health))
 - `labels` (Map of String) Labels to attach to this container in the Podman and Docker API.
 - `mounts` (Attributes List) A list of host filesystem locations or block devices to mount into the container's mount namespace.
 
@@ -155,6 +156,31 @@ resource "podman_container" "postgres_17" {
 Required:
 
 - `path` (String) Absolute path to a `/dev` node
+
+
+<a id="nestedatt--health"></a>
+### Nested Schema for `health`
+
+Optional:
+
+- `check` (Attributes) The health check itself. This launches a child process inside the container, which should terminate with an exit code of zero if the container is healthy.
+
+  If this attribute is not null then exactly one of its attributes must be set. Otherwise the health check specified by the container image will be used. (see [below for nested schema](#nestedatt--health--check))
+- `interval` (Number) Seconds to wait between health checks.
+- `retries` (Number) Number of consecutive health check failures before the container is considered unhealthy.
+- `start_interval` (Number) Number of seconds to wait for the container to return a successful health check after it is launched.
+- `start_period` (Number) Number of seconds between successive health check attempts while the container runtime is waiting for the container to return a successful health check for the first time.
+- `timeout` (Number) Maximum number of seconds to wait for a health check process to terminate. If this duration is exceeded then the health check process is terminated by a `SIGKILL` signal and the health check is considered to have failed.
+
+<a id="nestedatt--health--check"></a>
+### Nested Schema for `health.check`
+
+Optional:
+
+- `command` (List of String) A raw executable path and list of arguments to execute directly with no intervening shell.
+- `disabled` (Boolean) Do not perform a health check.
+- `shell_command` (String) A command that will be evaluated using `/bin/sh -c`.
+
 
 
 <a id="nestedatt--mounts"></a>
