@@ -145,8 +145,8 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 							},
 						},
 						"host_ip": schema.StringAttribute{
-							MarkdownDescription: "Host IPv4 address to bind to. Binds to all interfaces if omitted.",
-							CustomType:          iptypes.IPv4AddressType{},
+							MarkdownDescription: "Host IPv4 or IPv6 address to bind to. Binds to all IPv4 addresses by default.",
+							CustomType:          iptypes.IPAddressType{},
 							Optional:            true,
 						},
 						"host_port": schema.Int32Attribute{

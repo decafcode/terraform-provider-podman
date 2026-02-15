@@ -69,6 +69,11 @@ func TestAccContainerResource(t *testing.T) {
 								host_ip        = "192.168.1.1"
 								host_port      = 12345
 								protocols      = ["tcp", "udp"]
+							},
+							{
+							    container_port = 65432
+								host_ip        = "2001:db8::1"
+								host_port      = 23456
 							}
 						]
 
@@ -135,6 +140,11 @@ func TestAccContainerResource(t *testing.T) {
 									HostIP:        "192.168.1.1",
 									HostPort:      12345,
 									Protocol:      "tcp,udp",
+								},
+								{
+									ContainerPort: 65432,
+									HostIP:        "2001:db8::1",
+									HostPort:      23456,
 								},
 							},
 							SecretEnv: map[string]string{
