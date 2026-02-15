@@ -53,6 +53,7 @@ resource "podman_network" "internal" {
 - `container_host` (String) URL of the container host where this resource resides
 - `dns_enabled` (Boolean) Whether to enable resolution of private container IPs by container name inside the network. Defaults to false.
 - `internal` (Boolean) Set to true to block all outbound traffic from this network. Containers will not be able to use this network to communicate with any peers outside of this network (incoming connections on published ports are unaffected). Defaults to false
+- `ipv6_enabled` (Boolean) Enable IPv6 on this network in addition to IPv4. Defaults to false.
 
 ### Read-Only
 

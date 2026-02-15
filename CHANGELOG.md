@@ -1,4 +1,8 @@
-## 1.0.1 (Unreleased)
+## 1.1.0 (Unreleased)
+
+FEATURES:
+
+- Add `podman_network.ipv6_enabled` attribute
 
 FIXES:
 
