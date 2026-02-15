@@ -63,6 +63,22 @@ func TestAccNetworkResource(t *testing.T) {
 				},
 			},
 			{
+				Config: fmt.Sprintf(`
+					resource "podman_network" "ipv6_test" {
+						container_host = "%s"
+						ipv6_enabled   = true
+						name           = "ipv6_test"
+					}
+				`, framework.Url()),
+				ConfigStateChecks: []statecheck.StateCheck{
+					statecheck.ExpectKnownValue(
+						"podman_network.ipv6_test",
+						tfjsonpath.New("ipv6_enabled"),
+						knownvalue.Bool(true),
+					),
+				},
+			},
+			{
 				Config: `resource "podman_network" "import_test" {}`,
 				ConfigStateChecks: []statecheck.StateCheck{
 					statecheck.ExpectKnownValue(

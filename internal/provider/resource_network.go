@@ -28,6 +28,7 @@ type networkResourceModel struct {
 	DnsEnabled    types.Bool   `tfsdk:"dns_enabled"`
 	Id            types.String `tfsdk:"id"`
 	Internal      types.Bool   `tfsdk:"internal"`
+	Ipv6Enabled   types.Bool   `tfsdk:"ipv6_enabled"`
 	Name          types.String `tfsdk:"name"`
 }
 
@@ -69,6 +70,15 @@ func (r *networkResource) Schema(ctx context.Context, req resource.SchemaRequest
 					boolplanmodifier.RequiresReplaceIfConfigured(),
 				},
 			},
+			"ipv6_enabled": schema.BoolAttribute{
+				Computed:            true,
+				Default:             booldefault.StaticBool(false),
+				Optional:            true,
+				MarkdownDescription: "Enable IPv6 on this network in addition to IPv4. Defaults to false.",
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplaceIfConfigured(),
+				},
+			},
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Network name. Must be unique on the container host.",
 				PlanModifiers: []planmodifier.String{
@@ -97,9 +107,10 @@ func (r *networkResource) Create(ctx context.Context, req resource.CreateRequest
 	}
 
 	in := &api.NetworkJson{
-		DnsEnabled: data.DnsEnabled.ValueBool(),
-		Internal:   data.Internal.ValueBool(),
-		Name:       data.Name.ValueString(),
+		DnsEnabled:  data.DnsEnabled.ValueBool(),
+		Internal:    data.Internal.ValueBool(),
+		Ipv6Enabled: data.Ipv6Enabled.ValueBool(),
+		Name:        data.Name.ValueString(),
 	}
 
 	out, err := c.NetworkCreate(ctx, in)
@@ -147,6 +158,7 @@ func (r *networkResource) Read(ctx context.Context, req resource.ReadRequest, re
 
 	data.DnsEnabled = types.BoolValue(json.DnsEnabled)
 	data.Internal = types.BoolValue(json.Internal)
+	data.Ipv6Enabled = types.BoolValue(json.Ipv6Enabled)
 	data.Name = types.StringValue(json.Name)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
