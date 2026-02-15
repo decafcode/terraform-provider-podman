@@ -4,10 +4,12 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework-nettypes/iptypes"
+	"github.com/hashicorp/terraform-plugin-framework-validators/boolvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int32validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -81,6 +83,73 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 				Optional:            true,
 				PlanModifiers: []planmodifier.Map{
 					mapplanmodifier.RequiresReplaceIfConfigured(),
+				},
+			},
+			"health": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"check": schema.SingleNestedAttribute{
+						Attributes: map[string]schema.Attribute{
+							"command": schema.ListAttribute{
+								ElementType:         types.StringType,
+								MarkdownDescription: "A raw executable path and list of arguments to execute directly with no intervening shell.",
+								Optional:            true,
+								Validators: []validator.List{
+									listvalidator.ExactlyOneOf(
+										path.MatchRelative().AtParent().AtName("disabled"),
+										path.MatchRelative().AtParent().AtName("shell_command"),
+									),
+								},
+							},
+							"disabled": schema.BoolAttribute{
+								MarkdownDescription: "Do not perform a health check.",
+								Optional:            true,
+								Validators: []validator.Bool{
+									boolvalidator.ExactlyOneOf(
+										path.MatchRelative().AtParent().AtName("command"),
+										path.MatchRelative().AtParent().AtName("shell_command"),
+									),
+								},
+							},
+							"shell_command": schema.StringAttribute{
+								MarkdownDescription: "A command that will be evaluated using `/bin/sh -c`.",
+								Optional:            true,
+								Validators: []validator.String{
+									stringvalidator.ExactlyOneOf(
+										path.MatchRelative().AtParent().AtName("command"),
+										path.MatchRelative().AtParent().AtName("disabled"),
+									),
+								},
+							},
+						},
+						MarkdownDescription: "The health check itself. This launches a child process inside the container, which should terminate with an exit code of zero if the container is healthy.\n\n" +
+							"  If this attribute is not null then exactly one of its attributes must be set. Otherwise the health check specified by the container image will be used.\n\n",
+						Optional: true,
+					},
+					"interval": schema.NumberAttribute{
+						MarkdownDescription: "Seconds to wait between health checks.",
+						Optional:            true,
+					},
+					"retries": schema.Int32Attribute{
+						MarkdownDescription: "Number of consecutive health check failures before the container is considered unhealthy.",
+						Optional:            true,
+					},
+					"start_interval": schema.NumberAttribute{
+						MarkdownDescription: "Number of seconds to wait for the container to return a successful health check after it is launched.",
+						Optional:            true,
+					},
+					"start_period": schema.NumberAttribute{
+						MarkdownDescription: "Number of seconds between successive health check attempts while the container runtime is waiting for the container to return a successful health check for the first time.",
+						Optional:            true,
+					},
+					"timeout": schema.NumberAttribute{
+						MarkdownDescription: "Maximum number of seconds to wait for a health check process to terminate. If this duration is exceeded then the health check process is terminated by a `SIGKILL` signal and the health check is considered to have failed.",
+						Optional:            true,
+					},
+				},
+				MarkdownDescription: "Override the health check specified by the container image. All durations are in floating-point seconds, and any omitted values will default to the value specified by the container image.",
+				Optional:            true,
+				PlanModifiers: []planmodifier.Object{
+					objectplanmodifier.RequiresReplaceIfConfigured(),
 				},
 			},
 			"id": schema.StringAttribute{

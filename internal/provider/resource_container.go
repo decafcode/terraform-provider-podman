@@ -20,6 +20,21 @@ type containerResourceDeviceModel struct {
 	Path types.String `tfsdk:"path"`
 }
 
+type containerResourceHealthModel struct {
+	Check         types.Object `tfsdk:"check"`
+	Interval      types.Number `tfsdk:"interval"`
+	Retries       types.Int32  `tfsdk:"retries"`
+	StartInterval types.Number `tfsdk:"start_interval"`
+	StartPeriod   types.Number `tfsdk:"start_period"`
+	Timeout       types.Number `tfsdk:"timeout"`
+}
+
+type containerResourceHealthCheckModel struct {
+	Command      types.List   `tfsdk:"command"`
+	Disabled     types.Bool   `tfsdk:"disabled"`
+	ShellCommand types.String `tfsdk:"shell_command"`
+}
+
 type containerResourceMountModel struct {
 	Target  types.String `tfsdk:"target"`
 	Options types.List   `tfsdk:"options"`
@@ -72,6 +87,7 @@ type containerResourceModel struct {
 	Devices          types.List   `tfsdk:"devices"`
 	Entrypoint       types.List   `tfsdk:"entrypoint"`
 	Env              types.Map    `tfsdk:"env"`
+	Health           types.Object `tfsdk:"health"`
 	Id               types.String `tfsdk:"id"`
 	Image            types.String `tfsdk:"image"`
 	Labels           types.Map    `tfsdk:"labels"`

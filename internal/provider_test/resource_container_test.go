@@ -3,6 +3,7 @@ package provider
 import (
 	"encoding/base64"
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/decafcode/terraform-provider-podman/internal/api"
@@ -49,6 +50,14 @@ func TestAccContainerResource(t *testing.T) {
 
 						env = {
 							"MYENV" = "envvalue"
+						}
+
+						health = {
+							interval       = 1.2
+							retries        = 3
+							start_interval = 4.5
+							start_period   = 6.7
+							timeout        = 8.9
 						}
 
 						labels = {
@@ -131,6 +140,13 @@ func TestAccContainerResource(t *testing.T) {
 							},
 							Env: map[string]string{
 								"MYENV": "envvalue",
+							},
+							HealthConfig: &api.ContainerCreateHealthConfigJson{
+								Interval:      1_200_000_000,
+								Retries:       3,
+								StartInterval: 4_500_000_000,
+								StartPeriod:   6_700_000_000,
+								Timeout:       8_900_000_000,
 							},
 							Labels: map[string]string{
 								"MYLABEL": "labelvalue",
@@ -359,6 +375,125 @@ func TestAccContainerResource(t *testing.T) {
 
 					return nil
 				},
+			},
+			{
+				// Test health check disable override
+				Config: fmt.Sprintf(`
+					resource "podman_container" "health_disabled" {
+						container_host = "%s"
+						image          = "example.com/library/test:v1.0.0"
+						name           = "health_disabled"
+
+						health = {
+							check = {
+								disabled = true
+							}
+						}
+					}
+				`, framework.Url()),
+				Check: func(_ *terraform.State) error {
+					capture, err := apiServer.CaptureContainer("health_disabled")
+
+					if err != nil {
+						return err
+					}
+
+					result := cmp.DeepEqual(capture.Json.HealthConfig, &api.ContainerCreateHealthConfigJson{
+						Test: []string{"NONE"},
+					})()
+
+					if !result.Success() {
+						t.Log(result)
+
+						return fmt.Errorf("incorrect post payload")
+					}
+
+					return nil
+				},
+			},
+			{
+				// Test health check command override
+				Config: fmt.Sprintf(`
+					resource "podman_container" "health_cmd" {
+						container_host = "%s"
+						image          = "example.com/library/test:v1.0.0"
+						name           = "health_cmd"
+
+						health = {
+							check = {
+								command = ["foo", "bar"]
+							}
+						}
+					}
+				`, framework.Url()),
+				Check: func(_ *terraform.State) error {
+					capture, err := apiServer.CaptureContainer("health_cmd")
+
+					if err != nil {
+						return err
+					}
+
+					result := cmp.DeepEqual(capture.Json.HealthConfig, &api.ContainerCreateHealthConfigJson{
+						Test: []string{"CMD", "foo", "bar"},
+					})()
+
+					if !result.Success() {
+						t.Log(result)
+
+						return fmt.Errorf("incorrect post payload")
+					}
+
+					return nil
+				},
+			},
+			{
+				// Test health check shell command override
+				Config: fmt.Sprintf(`
+					resource "podman_container" "health_shell_cmd" {
+						container_host = "%s"
+						image          = "example.com/library/test:v1.0.0"
+						name           = "health_shell_cmd"
+
+						health = {
+							check = {
+								shell_command = "x y"
+							}
+						}
+					}
+				`, framework.Url()),
+				Check: func(_ *terraform.State) error {
+					capture, err := apiServer.CaptureContainer("health_shell_cmd")
+
+					if err != nil {
+						return err
+					}
+
+					result := cmp.DeepEqual(capture.Json.HealthConfig, &api.ContainerCreateHealthConfigJson{
+						Test: []string{"CMD-SHELL", "x y"},
+					})()
+
+					if !result.Success() {
+						t.Log(result)
+
+						return fmt.Errorf("incorrect post payload")
+					}
+
+					return nil
+				},
+			},
+			{
+				// Test negative duration check
+				Config: fmt.Sprintf(`
+					resource "podman_container" "neg_duration" {
+						container_host = "%s"
+						image          = "example.com/library/test:v1.0.0"
+
+						health = {
+							timeout = -1
+						}
+					}
+				`, framework.Url()),
+				ExpectError: regexp.MustCompile("Negative duration"),
 			},
 		},
 	})

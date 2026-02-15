@@ -1,7 +1,18 @@
 package api
 
+import "time"
+
 type ContainerCreateDeviceJson struct {
 	Path string `json:"path"`
+}
+
+type ContainerCreateHealthConfigJson struct {
+	Interval      time.Duration `json:",omitempty"`
+	Retries       int32         `json:",omitempty"`
+	StartInterval time.Duration `json:",omitempty"`
+	StartPeriod   time.Duration `json:",omitempty"`
+	Test          []string      `json:",omitempty"`
+	Timeout       time.Duration `json:",omitempty"`
 }
 
 type ContainerCreateMountJson struct {
@@ -42,6 +53,7 @@ type ContainerCreateJson struct {
 	Devices       []ContainerCreateDeviceJson           `json:"devices,omitempty"`
 	Env           map[string]string                     `json:"env,omitempty"`
 	Entrypoint    []string                              `json:"entrypoint,omitempty"`
+	HealthConfig  *ContainerCreateHealthConfigJson      `json:"healthconfig,omitempty"`
 	Labels        map[string]string                     `json:"labels"`
 	Mounts        []ContainerCreateMountJson            `json:"mounts,omitempty"`
 	Netns         ContainerCreateNamespaceJson          `json:"netns"`
