@@ -66,7 +66,7 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 					},
 				},
 				PlanModifiers: []planmodifier.List{
-					listplanmodifier.RequiresReplaceIfConfigured(),
+					listplanmodifier.RequiresReplace(),
 				},
 			},
 			"entrypoint": schema.ListAttribute{
@@ -82,7 +82,7 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "Environment variables to set in this container. This is in addition to any environment variables specified by the image.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.Map{
-					mapplanmodifier.RequiresReplaceIfConfigured(),
+					mapplanmodifier.RequiresReplace(),
 				},
 			},
 			"health": schema.SingleNestedAttribute{
@@ -149,7 +149,7 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "Override the health check specified by the container image. All durations are in floating-point seconds, and any omitted values will default to the value specified by the container image.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.RequiresReplaceIfConfigured(),
+					objectplanmodifier.RequiresReplace(),
 				},
 			},
 			"id": schema.StringAttribute{
@@ -171,7 +171,7 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 				MarkdownDescription: "Labels to attach to this container in the Podman and Docker API.",
 				Optional:            true,
 				PlanModifiers: []planmodifier.Map{
-					mapplanmodifier.RequiresReplaceIfConfigured(),
+					mapplanmodifier.RequiresReplace(),
 				},
 			},
 			"mounts": schema.ListNestedAttribute{
@@ -203,7 +203,7 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 					},
 				},
 				PlanModifiers: []planmodifier.List{
-					listplanmodifier.RequiresReplaceIfConfigured(),
+					listplanmodifier.RequiresReplace(),
 				},
 				Optional: true,
 			},
@@ -233,7 +233,7 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 					"  Other options are also possible. Please consult Podman's [upstream documentation](https://docs.podman.io/en/v5.5.2/markdown/podman-create.1.html#network-mode-net) for details.",
 				Optional: true,
 				PlanModifiers: []planmodifier.Object{
-					objectplanmodifier.RequiresReplaceIfConfigured(),
+					objectplanmodifier.RequiresReplace(),
 				},
 			},
 			"networks": schema.ListNestedAttribute{
@@ -249,7 +249,7 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 					},
 				},
 				PlanModifiers: []planmodifier.List{
-					listplanmodifier.RequiresReplaceIfConfigured(),
+					listplanmodifier.RequiresReplace(),
 				},
 				Optional: true,
 			},
@@ -289,7 +289,7 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 					},
 				},
 				PlanModifiers: []planmodifier.List{
-					listplanmodifier.RequiresReplaceIfConfigured(),
+					listplanmodifier.RequiresReplace(),
 				},
 				Optional: true,
 			},
@@ -367,7 +367,7 @@ func (*containerResource) Schema(ctx context.Context, req resource.SchemaRequest
 					"  The most commonly used value for this option is `[\"disable\"]`, which disables SELinux labelling. This lowers the security of the container, but it can be useful if you need to give the container access to Podman's API socket, since the standard SELinux policy will not let you do this by default even if you use the `Z` mount option when mounting the socket.",
 				Optional: true,
 				PlanModifiers: []planmodifier.List{
-					listplanmodifier.RequiresReplaceIfConfigured(),
+					listplanmodifier.RequiresReplace(),
 				},
 			},
 			"start_immediately": schema.BoolAttribute{
