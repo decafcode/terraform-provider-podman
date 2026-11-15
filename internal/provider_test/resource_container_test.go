@@ -9,6 +9,7 @@ import (
 	"github.com/decafcode/terraform-provider-podman/internal/api"
 	"github.com/decafcode/terraform-provider-podman/internal/testutil"
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/plancheck"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/assert/cmp"
@@ -497,4 +498,142 @@ func TestAccContainerResource(t *testing.T) {
 			},
 		},
 	})
+}
+
+func TestAccContainerResourceAttributeRemoval(t *testing.T) {
+	testCases := []struct {
+		attribute string
+		value     string
+	}{
+		{
+			attribute: "devices",
+			value:     `[{ path = "/dev/dri" }]`,
+		},
+		{
+			attribute: "env",
+			value:     `{ MYENV = "envvalue" }`,
+		},
+		{
+			attribute: "health",
+			value:     `{ check = { disabled = true } }`,
+		},
+		{
+			attribute: "labels",
+			value:     `{ MYLABEL = "labelvalue" }`,
+		},
+		{
+			attribute: "mounts",
+			value:     `[{ source = "/srv/data", target = "/var/lib/data" }]`,
+		},
+		{
+			attribute: "network_namespace",
+			value:     `{ mode = "host" }`,
+		},
+		{
+			attribute: "networks",
+			value:     `[{ id = "networkid" }]`,
+		},
+		{
+			attribute: "port_mappings",
+			value:     `[{ container_port = 8080, host_ip = "127.0.0.1", host_port = 18080 }]`,
+		},
+		{
+			attribute: "selinux_options",
+			value:     `["disable"]`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.attribute, func(t *testing.T) {
+			for _, removal := range []struct {
+				name   string
+				config string
+			}{
+				{name: "omitted"},
+				{name: "null", config: testCase.attribute + " = null"},
+			} {
+				t.Run(removal.name, func(t *testing.T) {
+					apiServer := testutil.ApiServer{}
+					framework, err := spawnFramework(t.Context(), &apiServer)
+					assert.NilError(t, err)
+
+					defer framework.Stop(t.Context())
+
+					config := func(attributes string) string {
+						return fmt.Sprintf(`
+							resource "podman_container" "test" {
+								container_host = "%s"
+								image          = "example.com/library/test:v1.0.0"
+								name           = "test"
+								%s
+							}
+						`, framework.Url(), attributes)
+					}
+
+					var originalId string
+
+					resource.Test(t, resource.TestCase{
+						IsUnitTest:               true,
+						ProtoV6ProviderFactories: providerFactories,
+						CheckDestroy: func(_ *terraform.State) error {
+							return apiServer.ContainerWalk(func(c *testutil.TestContainer) error {
+								return fmt.Errorf("leftover container: %s", c.Json.Name)
+							})
+						},
+						Steps: []resource.TestStep{
+							{
+								Config: config(testCase.attribute + " = " + testCase.value),
+								Check: func(_ *terraform.State) error {
+									capture, err := apiServer.CaptureContainer("test")
+
+									if err != nil {
+										return err
+									}
+
+									originalId = capture.Id
+
+									return nil
+								},
+							},
+							{
+								Config: config(removal.config),
+								ConfigPlanChecks: resource.ConfigPlanChecks{
+									PreApply: []plancheck.PlanCheck{
+										plancheck.ExpectResourceAction("podman_container.test", plancheck.ResourceActionReplace),
+									},
+								},
+								Check: func(_ *terraform.State) error {
+									capture, err := apiServer.CaptureContainer("test")
+
+									if err != nil {
+										return err
+									}
+
+									if capture.Id == originalId {
+										return fmt.Errorf("container was not replaced after removing %s", testCase.attribute)
+									}
+
+									result := cmp.DeepEqual(capture.Json, api.ContainerCreateJson{
+										Name:  "test",
+										Image: "example.com/library/test:v1.0.0",
+										Netns: api.ContainerCreateNamespaceJson{
+											NSMode: "bridge",
+										},
+									})()
+
+									if !result.Success() {
+										t.Log(result)
+
+										return fmt.Errorf("container configuration was not reset after removing %s", testCase.attribute)
+									}
+
+									return nil
+								},
+							},
+						},
+					})
+				})
+			}
+		})
+	}
 }
