@@ -1,3 +1,9 @@
+## 1.1.1
+
+FIXES:
+
+- Replace container when optional attributes are removed ([@amkad](https://github.com/amkad))
+
 ## 1.1.0
 
 FEATURES:
